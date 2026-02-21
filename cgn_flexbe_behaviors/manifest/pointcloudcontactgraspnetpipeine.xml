@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="PointCloudContactGraspnetPipeine">
+
+    <executable package_path="compare_flexbe_behaviors.pointcloudcontactgraspnetpipeine_sm" class="PointCloudContactGraspnetPipeineSM" />
+    <tagstring></tagstring>
+    <author>Huajing Zhao</author>
+    <date>Oct 22 2025</date>
+    <description>
+        A perception-to-action pipeline which employs that directly input point clouds
+        to contact-graspnet, which masks objects above the table for grasp
+        planning and OMPL for manipulation via MoveIt
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>

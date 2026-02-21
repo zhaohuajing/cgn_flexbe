@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="UnseenObjClusterContactGraspnetPipeine">
+
+    <executable package_path="compare_flexbe_behaviors.unseenobjclustercontactgraspnetpipeine_sm" class="UnseenObjClusterContactGraspnetPipeineSM" />
+    <tagstring></tagstring>
+    <author>Huajing Zhao</author>
+    <date>Dec 07 2025</date>
+    <description>
+        Using contact_graspnet_flexbe package: A perception-to-action pipeline which employs unseen-object-clustering for
+        object segmentation from a
+        scene and choose a target for grasping, then contact-graspnet for grasp
+        planning and OMPL for manipulation via MoveIt
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>

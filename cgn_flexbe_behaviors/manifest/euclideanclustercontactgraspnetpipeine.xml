@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior name="EuclideanClusterContactGraspnetPipeine">
+
+    <executable package_path="compare_flexbe_behaviors.euclideanclustercontactgraspnetpipeine_sm" class="EuclideanClusterContactGraspnetPipeineSM" />
+    <tagstring></tagstring>
+    <author>Huajing Zhao</author>
+    <date>Oct 22 2025</date>
+    <description>
+        Using contact_graspnet_flexbe package: A perception-to-action pipeline which employs cluster extraction in order to
+        cluster pickable objects from a
+        scene and choose a target for grasping, then contact-graspnet for grasp
+        planning and OMPL for manipulation via MoveIt
+    </description>
+
+
+    <!-- Contained Behaviors -->
+
+    <!-- Available Parameters -->
+
+</behavior>
