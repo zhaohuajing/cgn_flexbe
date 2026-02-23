@@ -104,19 +104,19 @@ The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects thes
 Considering adding the following nodes to your launch file:
 ```text
     
-    cgn_rgbd_bringup = Node(
-        package="contact_graspnet_ros2",
-        executable="grasp_executor_rgbd_server",
-        name="grasp_executor_rgbd_server",
-        output="screen",
-    )
+cgn_rgbd_bringup = Node(
+    package="contact_graspnet_ros2",
+    executable="grasp_executor_rgbd_server",
+    name="grasp_executor_rgbd_server",
+    output="screen",
+)
 
-    uoc_rgbd_bringup = Node(
-        package="unseen_obj_clst_ros2",
-        executable="segmentation_rgbd_server",
-        name="segmentation_rgbd_server",
-        output="screen",
-    )
+uoc_rgbd_bringup = Node(
+    package="unseen_obj_clst_ros2",
+    executable="segmentation_rgbd_server",
+    name="segmentation_rgbd_server",
+    output="screen",
+)
 ```
 
 ### 3) Start FlexBE and run a behavior
