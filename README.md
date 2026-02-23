@@ -1,4 +1,4 @@
-# FlexBE States and Behaviors for Contact-GraspNet (ROS 2) 
+# Contact-GraspNet FlexBE (ROS 2)
 
 FlexBE service states and behavior pipelines for integrating **Contact-GraspNet (CGN)** into a ROS 2 manipulation workflow.
 
@@ -12,18 +12,18 @@ This repository provides:
 
 ## Overview
 
-This package is designed as a **FlexBE-based perception-to-action integration layer** for Contact-GraspNet.
+This package is a **FlexBE-based perception-to-action integration layer** for Contact-GraspNet.
 
 It supports two CGN service states:
 
 1. **`cgn_grasp_rgbd_service_state.py`** (recommended)
-   - Uses **RGB-D-based CGN workflow**
+   - Uses an **RGB-D-based CGN workflow**
    - Works well with **Unseen Object Clustering (UOC)** as the upstream segmentation step
-   - Calls the ROS 2 Contact-GraspNet server (`/get_grasps`) using a `scene_name` / precomputed RGB-D scene representation
+   - Calls the ROS 2 Contact-GraspNet server (`/get_grasps`) using a `scene_name` convention (server-side scene loading)
 
 2. **`cgn_grasp_cloud_service_state.py`** (less recommended)
-   - Uses **point cloud input** (`PointCloud2`)
-   - Sends flattened points + mask to the CGN ROS 2 server
+   - Uses **point cloud input** (`sensor_msgs/PointCloud2`)
+   - Sends flattened XYZ points + mask/indices to the CGN ROS 2 server
    - Can work, but is generally less robust than the RGB-D/UOC pipeline in our setup
 
 ## Recommended Pipeline
@@ -31,13 +31,13 @@ It supports two CGN service states:
 **Most recommended:**  
 **UOC segmentation + CGN (RGB-D) + MoveIt OMPL motion planning**
 
-This pipeline is implemented in:
+Implemented in:
 
 - `unseenobjclustercontactgraspnetpipeine_sm.py`
 
-It performs:
+High-level flow:
 
-1. RGB-D segmentation (Unseen Object Clustering)
+1. RGB-D segmentation (UOC)
 2. Target instance selection
 3. Contact-GraspNet grasp generation (RGB-D mode)
 4. MoveIt-based motion planning to candidate grasp poses
@@ -56,6 +56,7 @@ It performs:
 │   ├── CHANGELOG.rst
 │   ├── CMakeLists.txt
 │   ├── config
+│   │   └── example.yaml
 │   ├── manifest
 │   │   ├── euclideanclustercontactgraspnetpipeine.xml
 │   │   ├── pointcloudcontactgraspnetpipeine.xml
@@ -78,92 +79,290 @@ It performs:
 │   │   └── cgn_flexbe_states
 │   ├── setup.cfg
 │   └── setup.py
-----
+```
 
-This raw repository has several folders and files with the generic name `cgn`.
+## Quick Start
+
+This section is tailored to the service names used in the uploaded FlexBE states/behaviors.
+
+### 1) Build the workspace
+
+```bash
+cd ~/your_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+
+### 2) Start required ROS 2 servers (recommended UOC + RGB-D CGN pipeline)
+
+The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects these services:
+
+- `/segmentation_rgbd` (UOC segmentation server)
+- `/get_grasps` (Contact-GraspNet server)
+- `/move_to_pose` (MoveIt/OMPL execution server)
+
+Example launch pattern (replace package/launch names with your actual ones):
+
+```bash
+# Terminal 1: UOC segmentation
+ros2 launch <uoc_package> <uoc_segmentation_launch>.launch.py
+
+# Terminal 2: Contact-GraspNet ROS 2 server
+ros2 launch <contact_graspnet_ros2_package> <cgn_server_launch>.launch.py
+
+# Terminal 3: MoveIt / motion execution service
+ros2 launch <moveit_or_compare_package> <move_to_pose_launch>.launch.py
+```
+
+### 3) Start FlexBE and run a behavior
+
+Open your FlexBE app / onboard execution, then run one of:
+
+- `UnseenObjClusterContactGraspnetPipeine` (**recommended**)
+- `EuclideanClusterContactGraspnetPipeine`
+- `PointCloudContactGraspnetPipeine`
+
+### 4) Optional services for alternate pipelines
+
+Depending on the behavior you choose, additional services may be required:
+
+- `/get_point_cloud`
+- `/euclidean_clustering`
+- `/filter_by_indices`
+- `/reach_to_grasp`
+
+You can verify everything is up with:
+
+```bash
+ros2 service list | grep -E "segmentation_rgbd|get_grasps|move_to_pose|get_point_cloud|euclidean_clustering|filter_by_indices|reach_to_grasp"
+```
+
+## Provided FlexBE States
+
+### `CGNGraspRGBDServiceState` (recommended)
+**File:** `cgn_flexbe_states/cgn_grasp_rgbd_service_state.py`
+
+Calls the Contact-GraspNet ROS 2 service in **RGB-D scene-name mode** (server loads data internally using `scene_name`).
+
+**Inputs**
+- `scene_name` (`string`) — CGN scene identifier (e.g., `scene_from_ucn`)
+
+**Outputs**
+- `grasp_target_poses` (`geometry_msgs/Pose[]`)
+- `grasp_scores` (`float[]`)
+- `grasp_samples` (`geometry_msgs/Point[]`)
+- `grasp_object_ids` (`int[]`)
+
+**Default service**
+- `/get_grasps`
 
 ---
 
-This repository is used by the FlexBE widget 
-[`create_repo`](https://github.com/FlexBE/flexbe_behavior_engine/blob/ros2-devel/flexbe_widget/bin/create_repo) 
-script to create an example project that you can build off of to add your own states and behaviors.  
+### `CGNGraspServiceState` (point cloud mode, less recommended)
+**File:** `cgn_flexbe_states/cgn_grasp_cloud_service_state.py`
 
-Using `ros2 run flexbe_widget create_repo <my_new_project_name>` will clone this repository, 
-and change the relevant `cgn` text to `my_new_project_name` as needed.
+Calls the Contact-GraspNet ROS 2 service using `PointCloud2`, converting the cloud to flattened XYZ points and optionally applying index-based masking / Z filtering before the request.
 
-It sets up the `package.xml` files with proper FlexBE export tags.
-It is maintained at version `0.0.1` as the starting point for your work.
+**Inputs**
+- `cloud_in` (`sensor_msgs/PointCloud2`) — target/filtered point cloud
+- `indices` (`list[int]`, optional) — optional point indices used for mask generation
 
-We have provided a license file to conform to ROS guidelines; however, you are free to replace the 
-`LICENSE` file, and apply whatever license you choose to states and behaviors that you create.
+**Outputs**
+- `grasp_target_poses` (`geometry_msgs/Pose[]`)
+- `grasp_scores` (`float[]`)
+- `grasp_samples` (`geometry_msgs/Point[]`)
+- `grasp_object_ids` (`int[]`)
 
-This repository contains an example behavior and examples for writing your own state implementations.
+**Default service**
+- `/get_grasps`
 
-## Example States in `cgn_flexbe_states`
+---
 
-Packages providing FlexBE states are identified by an export tag in the `package.xml`:
+### Other related states (used in pipelines)
+This repository also includes utility states for integration and execution, such as:
 
-```xml
-  <export>
-      <flexbe_states />
-      <build_type>ament_cmake</build_type>
-  </export>
+- `reach_to_grasp_service_state.py`
+- `select_instance_to_cgn_indices_state.py`
+
+The behaviors also rely on additional states from companion packages (e.g., `compare_flexbe_states`) such as:
+- `UnseenObjSegRGBDServiceState`
+- `GetPointCloudServiceState`
+- `EuclideanClusteringServiceState`
+- `FilterByIndicesServiceState`
+- `MoveToPoseServiceState`
+- `PublishPointCloudState`
+
+## Provided FlexBE Behaviors (Pipelines)
+
+### 1) `UnseenObjClusterContactGraspnetPipeine` (recommended)
+**File:** `cgn_flexbe_behaviors/cgn_flexbe_behaviors/unseenobjclustercontactgraspnetpipeine_sm.py`
+
+Pipeline:
+1. `UnseenObjSegRGBDServiceState` (`/segmentation_rgbd`)
+2. `SelectInstanceToSceneNameState`
+3. `CGNGraspRGBDServiceState` (`/get_grasps`)
+4. `MoveToPoseServiceState` (`/move_to_pose`)
+
+Why recommended:
+- Best compatibility in this integration
+- Clean segmentation-to-scene-name handoff
+- More stable grasp generation in the current setup
+
+---
+
+### 2) `EuclideanClusterContactGraspnetPipeine`
+**File:** `cgn_flexbe_behaviors/cgn_flexbe_behaviors/euclideanclustercontactgraspnetpipeine_sm.py`
+
+Pipeline:
+1. `GetPointCloudServiceState` (`/get_point_cloud`)
+2. `EuclideanClusteringServiceState` (`/euclidean_clustering`)
+3. `FilterByIndicesServiceState` (`/filter_by_indices`)
+4. `CGNGraspServiceState` (`/get_grasps`, point cloud mode)
+5. `PublishPointCloudState` (publishes `/filtered_cloud/target_object`)
+6. `MoveToPoseServiceState` (`/move_to_pose`)
+
+Use case:
+- Full point-cloud pipeline with clustering
+- Useful fallback when UOC is unavailable
+
+---
+
+### 3) `PointCloudContactGraspnetPipeine`
+**File:** `cgn_flexbe_behaviors/cgn_flexbe_behaviors/pointcloudcontactgraspnetpipeine_sm.py`
+
+Pipeline:
+1. `GetPointCloudServiceState` (`/get_point_cloud`)
+2. `CGNGraspServiceState` (`/get_grasps`, point cloud mode)
+3. `MoveToPoseServiceState` (`/move_to_pose`)
+4. `ReachToGraspServiceState` (`/reach_to_grasp`)
+
+Use case:
+- Minimal direct point-cloud-to-grasp pipeline
+- Good for debugging and simpler demos
+
+## Tables for Easier Documentation
+
+### State summary
+
+| State file | Main class | Inputs | Outputs | Service called | Notes |
+|---|---|---|---|---|---|
+| `cgn_grasp_rgbd_service_state.py` | `CGNGraspRGBDServiceState` | `scene_name` | `grasp_target_poses`, `grasp_scores`, `grasp_samples`, `grasp_object_ids` | `/get_grasps` | Recommended. RGB-D scene-name mode. |
+| `cgn_grasp_cloud_service_state.py` | `CGNGraspServiceState` | `cloud_in`, `indices` (optional) | `grasp_target_poses`, `grasp_scores`, `grasp_samples`, `grasp_object_ids` | `/get_grasps` | Point-cloud mode, less recommended. |
+| `reach_to_grasp_service_state.py` | `ReachToGraspServiceState` | typically `grasp_poses`, `grasp_index` | behavior-dependent | `/reach_to_grasp` | Used as final approach/closure in point-cloud pipeline. |
+| `select_instance_to_cgn_indices_state.py` | `SelectInstanceToSceneNameState` or related selector | segmentation results (`seg_json`, ids, masks) | selected target / `scene_name` or indices | none (local mapping) | Bridges segmentation output to CGN input convention. |
+
+### Behavior summary
+
+| Behavior (FlexBE) | Main file | Pipeline type | Services used | Recommended |
+|---|---|---|---|---|
+| `UnseenObjClusterContactGraspnetPipeine` | `unseenobjclustercontactgraspnetpipeine_sm.py` | UOC (RGB-D) -> CGN RGB-D -> MoveIt | `/segmentation_rgbd`, `/get_grasps`, `/move_to_pose` | Yes (primary) |
+| `EuclideanClusterContactGraspnetPipeine` | `euclideanclustercontactgraspnetpipeine_sm.py` | Point cloud -> Euclidean clustering -> CGN cloud -> MoveIt | `/get_point_cloud`, `/euclidean_clustering`, `/filter_by_indices`, `/get_grasps`, `/move_to_pose` | Secondary |
+| `PointCloudContactGraspnetPipeine` | `pointcloudcontactgraspnetpipeine_sm.py` | Point cloud -> CGN cloud -> MoveIt -> Reach | `/get_point_cloud`, `/get_grasps`, `/move_to_pose`, `/reach_to_grasp` | Debug/fallback |
+
+## Architecture
+
+### Recommended architecture (UOC + RGB-D CGN)
+
+```text
+RGB-D Camera
+   |
+   v
+Unseen Object Clustering (ROS 2 service: /segmentation_rgbd)
+   |
+   v
+Target instance selection / scene mapping
+   |
+   v
+CGNGraspRGBDServiceState
+   |
+   v
+Contact-GraspNet ROS 2 Server (/get_grasps)
+   |
+   v
+Grasp poses (Pose[])
+   |
+   v
+MoveIt / OMPL (MoveToPoseServiceState -> /move_to_pose)
+   |
+   v
+Robot motion execution
 ```
 
-* `example_state.py `
-  * Example state implementation with extra console logging to show the state life cycle.
+### Point-cloud architecture (less recommended)
 
-* `example_action_state.py`
-
-> Note: These example states are defined with extra console logging that is useful when learning FlexBE, 
-> but you will typically not include so much of the `Logger.info` commands as in these examples.
-
-> Note: You are free to copy and modify these files to create your own files and publish under your own license terms.
-> As per the existing licenses, no warranty is implied.
-
-## Example Behaviors in `cgn_flexbe_behaviors`
-
-Packages providing FlexBE behaviors are identified by an export tag in the `package.xml`:
-
-```xml
-  <export>
-      <flexbe_behaviors />
-      <build_type>ament_cmake</build_type>
-  </export>
+```text
+PointCloud2 (/get_point_cloud)
+   |
+   v
+(optional) Euclidean clustering / filtering
+   |
+   v
+CGNGraspServiceState (cloud mode)
+   |
+   v
+Contact-GraspNet ROS 2 Server (/get_grasps)
+   |
+   v
+Grasp poses (Pose[])
+   |
+   v
+MoveIt / OMPL
+   |
+   v
+(optional) ReachToGrasp (/reach_to_grasp)
 ```
 
-  * `example_behavior_sm.py`
-    * Most basic example state machine
+## Dependencies
 
-  * `example_action_behavior_sm.py` 
-    * Uses the `ExampleActionState` with the standard action tutorials 
+This repository assumes you already have the following in your ROS 2 workspace:
 
-        [Understanding ROS2 Actions](https://docs.ros.org/en/iron/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Actions/Understanding-ROS2-Actions.html)
+- **FlexBE** (core + onboard/app tooling)
+- **Contact-GraspNet ROS 2 server**
+  - service: `/get_grasps`
+  - service/message types from `contact_graspnet_ros2`
+- **MoveIt / motion execution service(s)**
+  - `/move_to_pose`
+  - optionally `/reach_to_grasp`
+- **Perception/segmentation services** depending on pipeline:
+  - `/segmentation_rgbd` (UOC, recommended)
+  - `/get_point_cloud`
+  - `/euclidean_clustering`
+  - `/filter_by_indices`
 
-        [Introducing Turtlesim](https://docs.ros.org/en/iron/Tutorials/Beginner-CLI-Tools/Introducing-Turtlesim/Introducing-Turtlesim.html)
-        
-        To execute the associated behavior in FlexBE, you need to first run the turtlesim node that provdes the action server
+## Installation
 
-        `ros2 run turtlesim turtlesim_node`
-        
-        To display the available actions:
+Clone into your ROS 2 workspace `src/` folder:
 
-        `ros2 action list`
-        
-        The action is defined by:
+```bash
+cd ~/your_ws/src
+git clone <your_repo_url>
+```
 
-        `/turtle1/rotate_absolute:` [`turtlesim/action/RotateAbsolute`](https://docs.ros2.org/latest/api/turtlesim/action/RotateAbsolute.html)
+Build and source:
 
-Behaviors typically edited and generated by the FlexBE UI.  
-These generated files are stored in the root workspace `install` folder.
-Presuming a `WORKSPACE_ROOT` environment variable exists, we provide a simple 
-[`copy_behavior`](cgn_flexbe_behaviors/bin/copy_behavior) script to copy a saved behavior 
-&mdash; both the Python implementation and manifest `.xml` file &mdash; 
-to the project source folder for long term storage.
-Use `ros2 run cgn_flexbe_behavior copy_behavior` to see the usage guide. 
-The script should be run from this repository's base folder.
+```bash
+cd ~/your_ws
+colcon build --symlink-install
+source install/setup.bash
+```
 
-For a Quick-start and more comprehensive introduction to FlexBE, 
-see the [FlexBE Turtlesim Demonstrations](https://github.com/FlexBE/flexbe_turtlesim_demo).
+## Notes and Recommendations
 
-# cgn_flexbe
+- **Use `CGNGraspRGBDServiceState` + UOC whenever possible.**  
+  This is the most reliable configuration in the current integration.
+
+- The point-cloud CGN state is still useful for debugging or fallback integration, but grasp quality and robustness may be lower depending on scene preprocessing.
+
+- These behavior files are generated FlexBE state machines. Manual edits inside generated sections may be overwritten if the behavior is regenerated.
+
+- Some behavior imports reference companion states from `compare_flexbe_states` (e.g., segmentation, clustering, move-to-pose). Keep those packages in the same workspace.
+
+## Acknowledgments
+
+This repository builds on:
+
+- Contact-GraspNet
+- FlexBE
+- ROS 2
+- MoveIt
+- Upstream perception modules (Unseen Object Clustering / PCL clustering)
