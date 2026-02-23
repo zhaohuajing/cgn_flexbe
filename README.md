@@ -1,15 +1,93 @@
-# FlexBE States and Behaviors for cgn
+# FlexBE States and Behaviors for Contact-GraspNet (ROS 2) 
 
-Generic template for a behaviors repository to be used for new projects
+FlexBE service states and behavior pipelines for integrating **Contact-GraspNet (CGN)** into a ROS 2 manipulation workflow.
 
-Modify this README as needed for your specific project details.
+This repository provides:
 
-Below we provide basic details, but you are free to delete or modify this README as you wish.
+- **FlexBE service states** for calling a ROS 2 Contact-GraspNet server
+- **Behavior pipelines** that connect perception/segmentation to grasp planning and motion execution
+- A recommended pipeline using:
+  - **Unseen Object Clustering (UOC)** for segmentation
+  - **Contact-GraspNet with RGB-D inputs** for grasp generation
 
+## Overview
+
+This package is designed as a **FlexBE-based perception-to-action integration layer** for Contact-GraspNet.
+
+It supports two CGN service states:
+
+1. **`cgn_grasp_rgbd_service_state.py`** (recommended)
+   - Uses **RGB-D-based CGN workflow**
+   - Works well with **Unseen Object Clustering (UOC)** as the upstream segmentation step
+   - Calls the ROS 2 Contact-GraspNet server (`/get_grasps`) using a `scene_name` / precomputed RGB-D scene representation
+
+2. **`cgn_grasp_cloud_service_state.py`** (less recommended)
+   - Uses **point cloud input** (`PointCloud2`)
+   - Sends flattened points + mask to the CGN ROS 2 server
+   - Can work, but is generally less robust than the RGB-D/UOC pipeline in our setup
+
+## Recommended Pipeline
+
+**Most recommended:**  
+**UOC segmentation + CGN (RGB-D) + MoveIt OMPL motion planning**
+
+This pipeline is implemented in:
+
+- `unseenobjclustercontactgraspnetpipeine_sm.py`
+
+It performs:
+
+1. RGB-D segmentation (Unseen Object Clustering)
+2. Target instance selection
+3. Contact-GraspNet grasp generation (RGB-D mode)
+4. MoveIt-based motion planning to candidate grasp poses
+
+## Repository Structure
+
+```text
+├── cgn_flexbe
+│   ├── CHANGELOG.rst
+│   ├── CMakeLists.txt
+│   └── package.xml
+├── cgn_flexbe_behaviors
+│   ├── bin
+│   │   └── copy_behavior
+│   ├── cgn_flexbe_behaviors
+│   │   ├── __init__.py
+│   │   ├── euclideanclustercontactgraspnetpipeine_sm.py
+│   │   ├── pointcloudcontactgraspnetpipeine_sm.py
+│   │   └── unseenobjclustercontactgraspnetpipeine_sm.py
+│   ├── CHANGELOG.rst
+│   ├── CMakeLists.txt
+│   ├── config
+│   │   └── example.yaml
+│   ├── manifest
+│   │   ├── euclideanclustercontactgraspnetpipeine.xml
+│   │   ├── pointcloudcontactgraspnetpipeine.xml
+│   │   └── unseenobjclustercontactgraspnetpipeine.xml
+│   ├── package.xml
+│   ├── resource
+│   │   └── cgn_flexbe_behaviors
+│   ├── setup.cfg
+│   └── setup.py
+├── cgn_flexbe_states
+│   ├── cgn_flexbe_states
+│   │   ├── __init__.py
+│   │   ├── cgn_grasp_cloud_service_state.py
+│   │   ├── cgn_grasp_rgbd_service_state.py
+│   │   ├── reach_to_grasp_service_state.py
+│   │   └── select_instance_to_cgn_indices_state.py
+│   ├── CHANGELOG.rst
+│   ├── package.xml
+│   ├── resource
+│   │   └── cgn_flexbe_states
+│   ├── setup.cfg
+│   └── setup.py
 ----
 
 This raw repository has several folders and files with the generic name `cgn`.
 
+---
 
 This repository is used by the FlexBE widget 
 [`create_repo`](https://github.com/FlexBE/flexbe_behavior_engine/blob/ros2-devel/flexbe_widget/bin/create_repo) 
