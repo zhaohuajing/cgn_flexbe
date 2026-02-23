@@ -93,13 +93,31 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 2) Start required ROS 2 servers (recommended UOC + RGB-D CGN pipeline)
+### 2) Setup required ROS 2 servers (recommended UOC + RGB-D CGN pipeline)
 
 The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects these services to be set up:
 
 - `/segmentation_rgbd` (UOC segmentation server): setup unseen_object_clustering_ros2 server through https://github.com/zhaohuajing/unseen_object_clustering_ros2
 - `/get_grasps` (Contact-GraspNet server): setup contact_graspnet_ros2 server through https://github.com/zhaohuajing/contact_graspnet_ros2
 - `/move_to_pose` (MoveIt/OMPL execution server): setup moveit and armada_ros2 servers through https://github.com/flynnbm/armada_ros2
+
+Considering adding the following nodes to your launch file:
+```text
+    
+    cgn_rgbd_bringup = Node(
+        package="contact_graspnet_ros2",
+        executable="grasp_executor_rgbd_server",
+        name="grasp_executor_rgbd_server",
+        output="screen",
+    )
+
+    uoc_rgbd_bringup = Node(
+        package="unseen_obj_clst_ros2",
+        executable="segmentation_rgbd_server",
+        name="segmentation_rgbd_server",
+        output="screen",
+    )
+```
 
 ### 3) Start FlexBE and run a behavior
 
