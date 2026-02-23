@@ -46,12 +46,8 @@ It performs:
 
 ```text
 ├── cgn_flexbe
-│   ├── CHANGELOG.rst
-│   ├── CMakeLists.txt
-│   └── package.xml
 ├── cgn_flexbe_behaviors
 │   ├── bin
-│   │   └── copy_behavior
 │   ├── cgn_flexbe_behaviors
 │   │   ├── __init__.py
 │   │   ├── euclideanclustercontactgraspnetpipeine_sm.py
@@ -60,7 +56,6 @@ It performs:
 │   ├── CHANGELOG.rst
 │   ├── CMakeLists.txt
 │   ├── config
-│   │   └── example.yaml
 │   ├── manifest
 │   │   ├── euclideanclustercontactgraspnetpipeine.xml
 │   │   ├── pointcloudcontactgraspnetpipeine.xml
