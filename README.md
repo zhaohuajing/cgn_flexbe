@@ -95,24 +95,11 @@ source install/setup.bash
 
 ### 2) Start required ROS 2 servers (recommended UOC + RGB-D CGN pipeline)
 
-The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects these services:
+The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects these services to be set up:
 
-- `/segmentation_rgbd` (UOC segmentation server)
-- `/get_grasps` (Contact-GraspNet server)
-- `/move_to_pose` (MoveIt/OMPL execution server)
-
-Example launch pattern (replace package/launch names with your actual ones):
-
-```bash
-# Terminal 1: UOC segmentation
-ros2 launch <uoc_package> <uoc_segmentation_launch>.launch.py
-
-# Terminal 2: Contact-GraspNet ROS 2 server
-ros2 launch <contact_graspnet_ros2_package> <cgn_server_launch>.launch.py
-
-# Terminal 3: MoveIt / motion execution service
-ros2 launch <moveit_or_compare_package> <move_to_pose_launch>.launch.py
-```
+- `/segmentation_rgbd` (UOC segmentation server): setup unseen_object_clustering_ros2 server through https://github.com/zhaohuajing/unseen_object_clustering_ros2
+- `/get_grasps` (Contact-GraspNet server): setup contact_graspnet_ros2 server through https://github.com/zhaohuajing/contact_graspnet_ros2
+- `/move_to_pose` (MoveIt/OMPL execution server): setup moveit and armada_ros2 servers through https://github.com/flynnbm/armada_ros2
 
 ### 3) Start FlexBE and run a behavior
 
