@@ -1,4 +1,4 @@
-# Contact-GraspNet FlexBE (ROS 2)
+# FlexBE States and Behaviors for Contact-GraspNet
 
 FlexBE service states and behavior pipelines for integrating **Contact-GraspNet (CGN)** into a ROS 2 manipulation workflow.
 
