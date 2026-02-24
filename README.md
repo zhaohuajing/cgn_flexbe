@@ -101,7 +101,7 @@ The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects thes
 - `/get_grasps` (Contact-GraspNet server): setup contact_graspnet_ros2 server through https://github.com/zhaohuajing/contact_graspnet_ros2
 - `/move_to_pose` (MoveIt/OMPL execution server): setup moveit and armada_ros2 servers through https://github.com/flynnbm/armada_ros2
 
-Considering adding the following nodes to your launch file:
+Consider adding the following nodes to your launch file:
 ```text
     
 cgn_rgbd_bringup = Node(
