@@ -47,7 +47,7 @@ Created on Oct 22 2025
 """
 
 
-from compare_flexbe_states.cgn_grasp_cloud_service_state import CGNGraspServiceState
+from compare_flexbe_states.cgn_grasp_cloud_service_state import CGNGraspCloudServiceState
 from compare_flexbe_states.get_point_cloud_service_state import GetPointCloudServiceState
 from compare_flexbe_states.move_to_pose_service_state import MoveToPoseServiceState
 from compare_flexbe_states.reach_to_grasp_service_state import ReachToGraspServiceState
@@ -138,7 +138,7 @@ class PointCloudContactGraspnetPipeineSM(Behavior):
 
             # x:419 y:65
             OperatableStateMachine.add('CgnGrasp',
-                                       CGNGraspServiceState(service_timeout=5.0,
+                                       CGNGraspCloudServiceState(service_timeout=5.0,
                                                             service_name='/get_grasps',
                                                             use_scene_id=False,
                                                             field_names=None,

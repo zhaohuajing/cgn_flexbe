@@ -1,0 +1,8 @@
+sensor_msgs/PointCloud2 input
+geometry_msgs/PoseStamped camera_pose
+float32 cluster_tolerance   # meters (e.g., 0.015–0.03 typical)
+int32   min_cluster_size    # e.g., 100
+int32   max_cluster_size    # e.g., 25000
+---
+pcl_msgs/PointIndices target_cluster_indices
+pcl_msgs/PointIndices[] obstacle_cluster_indices

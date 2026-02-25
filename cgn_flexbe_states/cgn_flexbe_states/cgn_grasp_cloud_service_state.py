@@ -19,7 +19,7 @@ from contact_graspnet_ros2.srv import GetGrasps as SrvType
 from contact_graspnet_ros2.msg import Grasps
 
 
-class CGNGraspServiceState(EventState):
+class CGNGraspCloudServiceState(EventState):
     """
     Calls the Contact-GraspNet `get_grasps` service and returns grasp poses.
 

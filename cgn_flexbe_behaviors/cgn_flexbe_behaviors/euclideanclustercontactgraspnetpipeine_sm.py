@@ -48,7 +48,7 @@ Created on Oct 22 2025
 """
 
 
-from cgn_flexbe_states.cgn_grasp_cloud_service_state import CGNGraspServiceState
+from cgn_flexbe_states.cgn_grasp_cloud_service_state import CGNGraspCloudServiceState
 from compare_flexbe_states.euclidean_clustering_service_state import EuclideanClusteringServiceState
 from compare_flexbe_states.filter_by_indices_service_state import FilterByIndicesServiceState
 from compare_flexbe_states.get_point_cloud_service_state import GetPointCloudServiceState
@@ -142,7 +142,7 @@ class EuclideanClusterContactGraspnetPipeineSM(Behavior):
 
             # x:831 y:53
             OperatableStateMachine.add('CgnGrasp',
-                                       CGNGraspServiceState(service_name='/get_grasps',
+                                       CGNGraspCloudServiceState(service_name='/get_grasps',
                                                             use_scene_id=False,
                                                             service_timeout=5.0,
                                                             field_names=None),
