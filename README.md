@@ -6,6 +6,7 @@ This repository provides:
 
 - **FlexBE service states** for calling a ROS 2 Contact-GraspNet server
 - **Behavior pipelines** that connect perception/segmentation to grasp planning and motion execution
+- **FlexBE utilities** for utility scripts different from `uml-robotics/compare_flexbe` upstream
 - A recommended pipeline using:
   - **Unseen Object Clustering (UOC)** for segmentation
   - **Contact-GraspNet with RGB-D inputs** for grasp generation
