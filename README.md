@@ -104,34 +104,25 @@ The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects thes
 
 Consider adding the following nodes to your launch file:
 ```text
-
-cgn_rgbd_bringup = Node(
-    package="contact_graspnet_ros2",
-    executable="grasp_executor_rgbd_server",
-    name="grasp_executor_rgbd_server",
-    output="screen",
-)
-
-    
-cgn_rgbd_bringup = Node(
-    package="contact_graspnet_ros2",
-    executable="grasp_executor_rgbd_server",
-    name="grasp_executor_rgbd_server",
-    output="screen",
-)
-
-cgn__bringup = Node(
-    package="contact_graspnet_ros2",
-    executable="grasp_executor__server",
-    name="grasp_executor__server",
-    output="screen",
-)
-
-
 uoc_rgbd_bringup = Node(
     package="unseen_obj_clst_ros2",
     executable="segmentation_rgbd_server",
     name="segmentation_rgbd_server",
+    output="screen",
+)
+
+cgn_rgbd_bringup = Node(
+    package="contact_graspnet_ros2",
+    executable="grasp_executor_rgbd_server",
+    name="grasp_executor_rgbd_server",
+    output="screen",
+)
+
+
+cgn_cloud_bringup = Node(
+    package="contact_graspnet_ros2",
+    executable="grasp_executor_cloud_server",
+    name="grasp_executor_cloud_server",
     output="screen",
 )
 ```
