@@ -1,7 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
-#include "compare_flexbe_utilities/srv/move_to_pose.hpp"
+#include "cgn_flexbe_utilities/srv/move_to_pose.hpp"
 
 #include <visualization_msgs/msg/marker.hpp>
 
@@ -19,7 +19,7 @@ public:
     move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
       std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node*){}), group_name);
 
-    service_ = this->create_service<compare_flexbe_utilities::srv::MoveToPose>(
+    service_ = this->create_service<cgn_flexbe_utilities::srv::MoveToPose>(
       "move_to_pose",
       std::bind(&PosePlanner::handle_request, this, std::placeholders::_1, std::placeholders::_2)
     );
@@ -28,12 +28,12 @@ public:
   }
 
 private:
-  rclcpp::Service<compare_flexbe_utilities::srv::MoveToPose>::SharedPtr service_;
+  rclcpp::Service<cgn_flexbe_utilities::srv::MoveToPose>::SharedPtr service_;
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
 
   void handle_request(
-    const std::shared_ptr<compare_flexbe_utilities::srv::MoveToPose::Request> req,
-    std::shared_ptr<compare_flexbe_utilities::srv::MoveToPose::Response> res)
+    const std::shared_ptr<cgn_flexbe_utilities::srv::MoveToPose::Request> req,
+    std::shared_ptr<cgn_flexbe_utilities::srv::MoveToPose::Response> res)
   {
     try
     {
@@ -102,7 +102,7 @@ private:
     }
   }
 
-  bool moveInBaseZ(const std::shared_ptr<compare_flexbe_utilities::srv::MoveToPose::Request> req,  double dz)
+  bool moveInBaseZ(const std::shared_ptr<cgn_flexbe_utilities::srv::MoveToPose::Request> req,  double dz)
   {
     const std::string ee_link = move_group_->getEndEffectorLink();
     // geometry_msgs::msg::PoseStamped current = move_group_->getCurrentPose(ee_link);

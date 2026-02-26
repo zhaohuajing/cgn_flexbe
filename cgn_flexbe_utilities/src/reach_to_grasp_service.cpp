@@ -8,8 +8,8 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include "compare_flexbe_utilities/srv/move_to_pose.hpp"
-using MoveToPoseSrv = compare_flexbe_utilities::srv::MoveToPose;
+#include "cgn_flexbe_utilities/srv/move_to_pose.hpp"
+using MoveToPoseSrv = cgn_flexbe_utilities::srv::MoveToPose;
 
 
 #include <std_srvs/srv/trigger.hpp>
@@ -242,7 +242,7 @@ private:
       return code == moveit::core::MoveItErrorCode::SUCCESS;
   }
 
-  bool moveInBaseZ(const geometry_msgs::msg::PoseStamped& ref_pose, double dz) // const std::shared_ptr<compare_flexbe_utilities::srv::MoveToPose::Request> req, 
+  bool moveInBaseZ(const geometry_msgs::msg::PoseStamped& ref_pose, double dz) // const std::shared_ptr<cgn_flexbe_utilities::srv::MoveToPose::Request> req, 
   {
     const std::string ee_link = arm_group_->getEndEffectorLink();
     // geometry_msgs::msg::PoseStamped current = arm_group_->getCurrentPose(ee_link);
@@ -275,7 +275,7 @@ private:
   }
 
 
-  bool moveInBaseY(const geometry_msgs::msg::PoseStamped& ref_pose, double dy) // const std::shared_ptr<compare_flexbe_utilities::srv::MoveToPose::Request> req, 
+  bool moveInBaseY(const geometry_msgs::msg::PoseStamped& ref_pose, double dy) // const std::shared_ptr<cgn_flexbe_utilities::srv::MoveToPose::Request> req, 
   {
     const std::string ee_link = arm_group_->getEndEffectorLink();
     // geometry_msgs::msg::PoseStamped current = arm_group_->getCurrentPose(ee_link);
