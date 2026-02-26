@@ -164,7 +164,7 @@ Calls the Contact-GraspNet ROS 2 service in **RGB-D scene-name mode** (server lo
 
 ---
 
-### `CGNGraspServiceState` (point cloud mode, less recommended)
+### `CGNGraspCloudServiceState` (point cloud mode, less recommended)
 **File:** `cgn_flexbe_states/cgn_grasp_cloud_service_state.py`
 
 Calls the Contact-GraspNet ROS 2 service using `PointCloud2`, converting the cloud to flattened XYZ points and optionally applying index-based masking / Z filtering before the request.
