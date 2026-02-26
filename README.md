@@ -25,7 +25,7 @@ It supports two CGN service states:
 2. **`cgn_grasp_cloud_service_state.py`** (less recommended)
    - Uses **point cloud input** (`sensor_msgs/PointCloud2`)
    - Sends flattened XYZ points + mask/indices to the CGN ROS 2 server
-   - Can work, but is generally less robust than the RGB-D/UOC pipeline in our setup
+   - Works with PointCloud-based perception modules `GetPointCloudServiceState` and `EuclideanClusteringServiceState`, but is generally less robust than the RGB-D/UOC pipeline
 
 ## Recommended Pipeline
 
@@ -104,6 +104,14 @@ The recommended behavior (`UnseenObjClusterContactGraspnetPipeine`) expects thes
 
 Consider adding the following nodes to your launch file:
 ```text
+
+cgn_rgbd_bringup = Node(
+    package="contact_graspnet_ros2",
+    executable="grasp_executor_rgbd_server",
+    name="grasp_executor_rgbd_server",
+    output="screen",
+)
+
     
 cgn_rgbd_bringup = Node(
     package="contact_graspnet_ros2",
@@ -111,6 +119,14 @@ cgn_rgbd_bringup = Node(
     name="grasp_executor_rgbd_server",
     output="screen",
 )
+
+cgn__bringup = Node(
+    package="contact_graspnet_ros2",
+    executable="grasp_executor__server",
+    name="grasp_executor__server",
+    output="screen",
+)
+
 
 uoc_rgbd_bringup = Node(
     package="unseen_obj_clst_ros2",
