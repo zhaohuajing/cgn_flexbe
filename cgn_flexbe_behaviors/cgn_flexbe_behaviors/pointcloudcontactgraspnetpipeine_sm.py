@@ -47,10 +47,10 @@ Created on Oct 22 2025
 """
 
 
-from compare_flexbe_states.cgn_grasp_cloud_service_state import CGNGraspCloudServiceState
+from cgn_flexbe_states.cgn_grasp_cloud_service_state import CGNGraspCloudServiceState
 from compare_flexbe_states.get_point_cloud_service_state import GetPointCloudServiceState
 from compare_flexbe_states.move_to_pose_service_state import MoveToPoseServiceState
-from compare_flexbe_states.reach_to_grasp_service_state import ReachToGraspServiceState
+from cgn_flexbe_states.reach_to_grasp_service_state import ReachToGraspServiceState
 from flexbe_core import Autonomy
 from flexbe_core import Behavior
 from flexbe_core import ConcurrencyContainer

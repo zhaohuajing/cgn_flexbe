@@ -49,9 +49,9 @@ Created on Dec 07 2025
 
 
 from cgn_flexbe_states.cgn_grasp_rgbd_service_state import CGNGraspRGBDServiceState
-from compare_flexbe_states.move_to_pose_service_state import MoveToPoseServiceState
-from compare_flexbe_states.select_instance_to_cgn_indices_state import SelectInstanceToSceneNameState
-from compare_flexbe_states.unseen_obj_seg_rgbd_service_state import UnseenObjSegRGBDServiceState
+from cgn_flexbe_states.move_to_pose_service_state import MoveToPoseServiceState
+from cgn_flexbe_states.select_instance_to_cgn_indices_state import SelectInstanceToSceneNameState
+from uoc_flexbe_states.unseen_obj_seg_rgbd_service_state import UnseenObjSegRGBDServiceState
 from flexbe_core import Autonomy
 from flexbe_core import Behavior
 from flexbe_core import ConcurrencyContainer
@@ -114,6 +114,7 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
         _state_machine.userdata.grasp_samples = []
         _state_machine.userdata.grasp_object_ids = []
         _state_machine.userdata.grasp_index = 0
+        _state_machine.userdata.manual_target_instance_id = -1
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]
@@ -141,8 +142,8 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
 
             # x:762 y:41
             OperatableStateMachine.add('CgnGraspRGBD',
-                                       CGNGraspRGBDServiceState(service_timeout=10.0,
-                                                                service_name='/get_grasps'),
+                                       CGNGraspRGBDServiceState(service_timeout=20.0,
+                                                                service_name='/get_grasps_rgbd'),
                                        transitions={'done': 'MoveOMPL', 'failed': 'failed'},
                                        autonomy={'done': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'scene_name': 'scene_name',
@@ -166,7 +167,8 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
 
             # x:419 y:38
             OperatableStateMachine.add('SelectInstanceToScene',
-                                       SelectInstanceToSceneNameState(default_scene_name='scene_from_ucn'),
+                                       SelectInstanceToSceneNameState(default_scene_name='scene_from_ucn',
+                                                                     selection_mode='manual'),
                                        transitions={'finished': 'CgnGraspRGBD', 'failed': 'failed'},
                                        autonomy={'finished': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'seg_json': 'seg_json',
@@ -176,6 +178,7 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                                   'im_name': 'im_name',
                                                   'target_instance_id': 'target_instance_id',
                                                   'scene_name': 'scene_name',
+                                                  'manual_target_instance_id': 'manual_target_instance_id',
                                                   'message': 'message'})
 
         return _state_machine
