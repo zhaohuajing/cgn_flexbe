@@ -14,7 +14,7 @@ import subprocess, os
 
 class CGNGraspRGBDServiceState(EventState):
     """
-    Calls the Contact-GraspNet `get_grasps` service using only a precomputed
+    Calls the Contact-GraspNet `get_grasps_rgbd` service using only a precomputed
     scene name (RGBD pipeline).
 
     Assumes the server:
@@ -38,7 +38,8 @@ class CGNGraspRGBDServiceState(EventState):
 
     def __init__(self,
                  service_timeout: float = 10.0,
-                 service_name: str = '/get_grasps'):
+                 # service_name: str = '/get_grasps'):
+                 service_name: str = '/get_grasps_rgbd'):
         super().__init__(
             outcomes=['done', 'failed'],
             input_keys=['scene_name'],
