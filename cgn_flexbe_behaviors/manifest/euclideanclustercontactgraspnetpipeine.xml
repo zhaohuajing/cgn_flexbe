@@ -7,7 +7,7 @@
     <author>Huajing Zhao</author>
     <date>Oct 22 2025</date>
     <description>
-        Using contact_graspnet_flexbe package: A perception-to-action pipeline which employs cluster extraction in order to
+        Using cgn_flexbe package: A perception-to-action pipeline which employs cluster extraction in order to
         cluster pickable objects from a
         scene and choose a target for grasping, then contact-graspnet for grasp
         planning and OMPL for manipulation via MoveIt

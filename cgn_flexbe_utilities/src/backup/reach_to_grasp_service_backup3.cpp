@@ -119,21 +119,12 @@ public:
       std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node*){}), gripper_group_name);
 
     // GEN3/Robotiq action client. The old MoveIt gripper group remains available as fallback.
-    // IMPORTANT: use a separate Reentrant callback group for the action client.
-    // The /reach_to_grasp service callback waits for the action result; if the action
-    // client shares the default mutually-exclusive callback group, the goal-response
-    // callback can be blocked and the service reports "timed out waiting for goal response".
-    gripper_action_callback_group_ = this->create_callback_group(
-      rclcpp::CallbackGroupType::Reentrant);
-
     gripper_action_client_ = rclcpp_action::create_client<GripperCommand>(
       this->get_node_base_interface(),
       this->get_node_graph_interface(),
       this->get_node_logging_interface(),
       this->get_node_waitables_interface(),
-      gripper_action_name_,
-      gripper_action_callback_group_,
-      rcl_action_client_get_default_options());
+      gripper_action_name_);
 
     if (!ee_link_.empty())
     {
@@ -205,7 +196,6 @@ private:
   double close_gripper_position_ = 0.8;
   double gripper_max_effort_ = 100.0;
   double gripper_action_timeout_ = 10.0;
-  rclcpp::CallbackGroup::SharedPtr gripper_action_callback_group_;
   rclcpp_action::Client<GripperCommand>::SharedPtr gripper_action_client_;
 
   bool open_before_grasp_ = true;
@@ -452,9 +442,8 @@ private:
 
     gripper_action_client_->async_send_goal(goal, send_goal_options);
 
-    // This wait assumes main() uses MultiThreadedExecutor AND that the action client is
-    // in a callback group that can run while this service callback is blocked.
-    // See gripper_action_callback_group_ in the constructor and main() at the bottom.
+    // This wait assumes main() uses MultiThreadedExecutor so action callbacks can run while
+    // this service callback is waiting. See the modified main() at the bottom of this file.
     {
       std::unique_lock<std::mutex> lock(mutex);
       if (!cv.wait_for(lock, timeout, [&] { return goal_response_received; }))
@@ -582,51 +571,9 @@ private:
     return false;
   }
 
-  // bool moveToPose(const geometry_msgs::msg::PoseStamped& pose)
-  // {
-  //   setCurrentStateForGroup(arm_group_, "moveToPose");
-
-  //   arm_group_->setPlanningTime(arm_planning_time_);
-  //   arm_group_->setMaxVelocityScalingFactor(arm_velocity_scaling_);
-  //   arm_group_->setMaxAccelerationScalingFactor(arm_acceleration_scaling_);
-
-  //   const std::string ee_link = ee_link_.empty() ? arm_group_->getEndEffectorLink() : ee_link_;
-  //   arm_group_->setPoseTarget(pose, ee_link);
-
-  //   moveit::planning_interface::MoveGroupInterface::Plan plan;
-  //   auto result = arm_group_->plan(plan);
-  //   if (result != moveit::core::MoveItErrorCode::SUCCESS)
-  //   {
-  //     RCLCPP_WARN(this->get_logger(), "Planning to grasp pose failed.");
-  //     arm_group_->clearPoseTargets();
-  //     return false;
-  //   }
-
-  //   auto exec = arm_group_->execute(plan);
-  //   arm_group_->clearPoseTargets();
-  //   if (exec != moveit::core::MoveItErrorCode::SUCCESS)
-  //   {
-  //     RCLCPP_ERROR(this->get_logger(), "Execution to grasp pose failed with code %d.", static_cast<int>(exec.val));
-  //     return false;
-  //   }
-
-  //   target_ps = pose;
-  //   return true;
-  // }
-
   bool moveToPose(const geometry_msgs::msg::PoseStamped& pose)
   {
-    // GEN3/real robot:
-    // Do NOT force a default start state if getCurrentState() fails.
-    // The Kortex/ros2_control joint_states can have stamp 0.0, which makes
-    // MoveIt CurrentStateMonitor complain. Falling back to a default state
-    // causes execution aborts because the planned start does not match the
-    // physical robot.
-    //
-    // Original line:
-    // setCurrentStateForGroup(arm_group_, "moveToPose");
-
-    arm_group_->setStartStateToCurrentState();
+    setCurrentStateForGroup(arm_group_, "moveToPose");
 
     arm_group_->setPlanningTime(arm_planning_time_);
     arm_group_->setMaxVelocityScalingFactor(arm_velocity_scaling_);
@@ -639,17 +586,16 @@ private:
     auto result = arm_group_->plan(plan);
     if (result != moveit::core::MoveItErrorCode::SUCCESS)
     {
-      RCLCPP_WARN(this->get_logger(), "Planning to pose failed.");
+      RCLCPP_WARN(this->get_logger(), "Planning to grasp pose failed.");
       arm_group_->clearPoseTargets();
       return false;
     }
 
     auto exec = arm_group_->execute(plan);
     arm_group_->clearPoseTargets();
-
     if (exec != moveit::core::MoveItErrorCode::SUCCESS)
     {
-      RCLCPP_ERROR(this->get_logger(), "Execution to pose failed with code %d.", static_cast<int>(exec.val));
+      RCLCPP_ERROR(this->get_logger(), "Execution to grasp pose failed with code %d.", static_cast<int>(exec.val));
       return false;
     }
 

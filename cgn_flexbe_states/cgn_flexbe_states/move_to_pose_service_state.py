@@ -20,7 +20,7 @@ from rclpy.duration import Duration
 from flexbe_core import EventState, Logger
 from flexbe_core.proxy import ProxyServiceCaller
 
-from compare_flexbe_utilities.srv import MoveToPose as SrvType
+from cgn_flexbe_utilities.srv import MoveToPose as SrvType
 from geometry_msgs.msg import Pose
 
 class MoveToPoseServiceState(EventState):
@@ -63,8 +63,8 @@ class MoveToPoseServiceState(EventState):
 
         try:
             Logger.loginfo(f"[{type(self).__name__}] Finished plan with result: {self._res.success}.")
-            # if self._res.success == 1:
-            if self._res.success == 1 and userdata.grasp_index >= 10:
+            if self._res.success == 1:
+            # if self._res.success == 1 and userdata.grasp_index >= 10:
                 return 'done'
             if (userdata.grasp_index + 1) < len(userdata.grasp_poses):
                 userdata.grasp_index = userdata.grasp_index + 1
@@ -102,7 +102,7 @@ class MoveToPoseServiceState(EventState):
 
         # wait for availability (once per entry)
         if not self._srv.is_available(self._service_name):
-            Logger.logerr(f"[{type(self).__name__}] Service '{self._service_name}' not available after {self._service_timeout}s.")
+            Logger.logerr(f"[{type(self).__name__}] Service '{self._service_name}' not available after {self._timeout_sec}s.")
             self._had_error = True
             return
 

@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
 
-import time
 import rclpy
 
 from flexbe_core import EventState, Logger
 from flexbe_core.proxy import ProxyServiceCaller
 
 # Use the same srv type as move_to_pose
-from cgn_flexbe_utilities.srv import MoveToPose as SrvType
+from compare_flexbe_utilities.srv import MoveToPose as SrvType
 from geometry_msgs.msg import Pose
 
 
 class ReachToGraspServiceState(EventState):
     """
-    Call /reach_to_grasp (MoveToPose.srv) to execute the grasp/pick sequence.
+    Call /reach_to_grasp (MoveToPose.srv) to execute the grasp sequence:
+      - open gripper
+      - move along EE-Z
+      - close gripper
+      - lift in base-Z
+      - (optionally) open again, etc.
 
-    Gen3/default service behavior after the C++ update:
-      - optionally open Robotiq gripper using SRDF named target "Open"
-      - optionally move to the selected CGN grasp pose
-      - close Robotiq gripper using SRDF named target "Close"
-      - lift in base-frame Z
-      - do NOT reopen by default, so the object remains grasped
+    We pass the selected grasp pose in the request as `target_pose`.
 
     -- service_name      string   Absolute service name (default: '/reach_to_grasp')
-    -- timeout_sec       float    Timeout for waiting for service availability (default: 30.0)
+    -- timeout_sec       float    [currently not used by ProxyServiceCaller] (default: 10.0)
 
     ># grasp_poses       list     List[geometry_msgs/Pose] of candidate grasp poses
     ># grasp_index       int      Index of the grasp pose to use
@@ -34,21 +33,16 @@ class ReachToGraspServiceState(EventState):
 
     def __init__(self,
                  service_name='/reach_to_grasp',
-                 # Original default:
-                 # timeout_sec=10.0):
-                 # GEN3/real robot: give MoveIt/controller startup a little more time.
-                 timeout_sec=30.0):
+                 timeout_sec=10.0):
         super().__init__(
             outcomes=['done', 'failed'],
             input_keys=['grasp_poses', 'grasp_index'],
             output_keys=['grasp_index'])
 
         self._service_name = service_name
-        self._timeout_sec = float(timeout_sec)
+        self._timeout_sec = timeout_sec
 
-        # Original line:
-        # self._srv = ProxyServiceCaller({self._service_name: SrvType}, wait_duration=0.0)
-        # Keep non-blocking construction, but explicitly wait in on_enter().
+        # Do not block at construction time; service may not exist yet
         self._srv = ProxyServiceCaller({self._service_name: SrvType},
                                        wait_duration=0.0)
 
@@ -80,21 +74,11 @@ class ReachToGraspServiceState(EventState):
         request = SrvType.Request()
         request.target_pose = grasp_poses[idx]
 
-        # Original behavior warned and called anyway. For the real Gen3 sequence,
-        # wait explicitly so FlexBE does not fail just because the service starts slowly.
-        deadline = time.time() + self._timeout_sec
-        while time.time() < deadline:
-            if self._srv.is_available(self._service_name):
-                break
-            time.sleep(0.2)
-
         if not self._srv.is_available(self._service_name):
-            Logger.logerr(
+            Logger.logwarn(
                 f"[{type(self).__name__}] Service '{self._service_name}' not "
-                f"available after {self._timeout_sec:.1f}s."
+                f"reported available yet, calling anyway."
             )
-            self._failed = True
-            return
 
         try:
             self._res = self._srv.call(self._service_name, request)
@@ -111,13 +95,19 @@ class ReachToGraspServiceState(EventState):
         if self._failed or self._res is None:
             return 'failed'
 
-        # MoveToPose.srv uses success; depending on the srv definition this may be bool or int.
+        # MoveToPose.srv uses an integer success flag (usually 1 == success)
         try:
-            if bool(getattr(self._res, 'success', False)):
-                Logger.loginfo(f"[{type(self).__name__}] Reach-to-grasp / pick succeeded.")
+            if getattr(self._res, 'success', 0) == 1:
+                Logger.loginfo(
+                    f"[{type(self).__name__}] Reach-to-grasp OK: "
+                    f"{getattr(self._res, 'message', '')}"
+                )
                 return 'done'
             else:
-                Logger.logwarn(f"[{type(self).__name__}] Reach-to-grasp / pick failed.")
+                Logger.logwarn(
+                    f"[{type(self).__name__}] Reach-to-grasp failed: "
+                    f"{getattr(self._res, 'message', '')}"
+                )
                 return 'failed'
         except Exception as e:
             Logger.logerr(

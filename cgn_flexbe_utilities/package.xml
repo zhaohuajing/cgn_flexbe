@@ -24,6 +24,13 @@
   <depend>moveit_msgs</depend>
   <depend>gpd_ros</depend>
 
+  <depend>rclcpp_action</depend>
+  <depend>control_msgs</depend>
+
+  <depend>parameter_traits</depend>
+  <depend>visualization_msgs</depend>
+  <depend>std_srvs</depend>
+
   <!-- <build_depend>rosidl_default_generators</build_depend> -->
   <exec_depend>rosidl_default_runtime</exec_depend>
 
