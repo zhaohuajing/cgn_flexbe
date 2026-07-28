@@ -65,23 +65,11 @@ public:
     // Motion sequence parameters. Defaults are conservative for your current pipeline where
     // move_to_pose already places the gripper at the CGN grasp pose.
     this->declare_parameter<bool>("open_before_grasp", true);
-    this->declare_parameter<bool>("move_to_grasp_pose_first", false);
+    this->declare_parameter<bool>("move_to_grasp_pose_first", true);
     this->declare_parameter<double>("pregrasp_base_z_offset", 0.0);     // Original temporary value was -0.05
     this->declare_parameter<double>("approach_ee_z_distance", 0.0);     // Original temporary value was 0.12
     this->declare_parameter<double>("lift_base_z_distance", 0.10);      // Lift after closing
-
-    // After lifting, optionally move to a fixed base-frame drop/place pose,
-    // then open the gripper.  This keeps the earlier lift behavior but makes
-    // the actual release happen at a safer, known pose.
-    this->declare_parameter<bool>("move_to_drop_pose_after_lift", true);
-    this->declare_parameter<double>("drop_pose_x", 0.12054);
-    this->declare_parameter<double>("drop_pose_y", -0.23436);
-    this->declare_parameter<double>("drop_pose_z", 0.39196);
-    this->declare_parameter<double>("drop_pose_qx", 0.706244);
-    this->declare_parameter<double>("drop_pose_qy", 0.706793);
-    this->declare_parameter<double>("drop_pose_qz", 0.0287094);
-    this->declare_parameter<double>("drop_pose_qw", 0.0289661);
-    this->declare_parameter<bool>("reopen_after_lift", true);           // Drop/release after optional drop-pose motion
+    this->declare_parameter<bool>("reopen_after_lift", false);          // Original code reopened/dropped after lift
 
     this->declare_parameter<double>("arm_planning_time", 5.0);
     this->declare_parameter<double>("gripper_planning_time", 5.0);
@@ -111,14 +99,6 @@ public:
     this->get_parameter("pregrasp_base_z_offset", pregrasp_base_z_offset_);
     this->get_parameter("approach_ee_z_distance", approach_ee_z_distance_);
     this->get_parameter("lift_base_z_distance", lift_base_z_distance_);
-    this->get_parameter("move_to_drop_pose_after_lift", move_to_drop_pose_after_lift_);
-    this->get_parameter("drop_pose_x", drop_pose_x_);
-    this->get_parameter("drop_pose_y", drop_pose_y_);
-    this->get_parameter("drop_pose_z", drop_pose_z_);
-    this->get_parameter("drop_pose_qx", drop_pose_qx_);
-    this->get_parameter("drop_pose_qy", drop_pose_qy_);
-    this->get_parameter("drop_pose_qz", drop_pose_qz_);
-    this->get_parameter("drop_pose_qw", drop_pose_qw_);
     this->get_parameter("reopen_after_lift", reopen_after_lift_);
     this->get_parameter("arm_planning_time", arm_planning_time_);
     this->get_parameter("gripper_planning_time", gripper_planning_time_);
@@ -171,13 +151,6 @@ public:
 
     RCLCPP_INFO(this->get_logger(), "MoveIt planning frame: %s", arm_group_->getPlanningFrame().c_str());
     RCLCPP_INFO(this->get_logger(), "MoveIt end-effector link: %s", arm_group_->getEndEffectorLink().c_str());
-    RCLCPP_INFO(this->get_logger(),
-                "Post-lift drop pose: enabled=%s, frame=%s, pos=(%.3f, %.3f, %.3f), quat=(%.3f, %.3f, %.3f, %.3f), reopen_after_lift=%s",
-                move_to_drop_pose_after_lift_ ? "true" : "false",
-                base_frame_.c_str(),
-                drop_pose_x_, drop_pose_y_, drop_pose_z_,
-                drop_pose_qx_, drop_pose_qy_, drop_pose_qz_, drop_pose_qw_,
-                reopen_after_lift_ ? "true" : "false");
 
     // Original Panda hand joint-value setup:
     // open_gripper_joint_values_.assign(joint_names.size(), 0.04);
@@ -235,21 +208,12 @@ private:
   rclcpp::CallbackGroup::SharedPtr gripper_action_callback_group_;
   rclcpp_action::Client<GripperCommand>::SharedPtr gripper_action_client_;
 
-
   bool open_before_grasp_ = true;
-  bool move_to_grasp_pose_first_ = false;
+  bool move_to_grasp_pose_first_ = true;
   double pregrasp_base_z_offset_ = 0.0;
   double approach_ee_z_distance_ = 0.10;
-  double lift_base_z_distance_ = 0.15;
-  bool move_to_drop_pose_after_lift_ = true;
-  double drop_pose_x_ = 0.12054;
-  double drop_pose_y_ = -0.23436;
-  double drop_pose_z_ = 0.39196;
-  double drop_pose_qx_ = 0.706244;
-  double drop_pose_qy_ = 0.706793;
-  double drop_pose_qz_ = 0.0287094;
-  double drop_pose_qw_ = 0.0289661;
-  bool reopen_after_lift_ = true;
+  double lift_base_z_distance_ = 0.20;
+  bool reopen_after_lift_ = false;
 
   double arm_planning_time_ = 5.0;
   double gripper_planning_time_ = 5.0;
@@ -351,37 +315,9 @@ private:
         }
       }
 
-      // 4) Move to a fixed base-frame drop/place pose before releasing.
-      // This pose is independent of the grasp orientation and is specified in base_frame_.
-      if (move_to_drop_pose_after_lift_)
-      {
-        geometry_msgs::msg::PoseStamped drop_ps;
-        drop_ps.header.frame_id = base_frame_;
-        drop_ps.header.stamp = this->now();
-        drop_ps.pose.position.x = drop_pose_x_;
-        drop_ps.pose.position.y = drop_pose_y_;
-        drop_ps.pose.position.z = drop_pose_z_;
-        drop_ps.pose.orientation.x = drop_pose_qx_;
-        drop_ps.pose.orientation.y = drop_pose_qy_;
-        drop_ps.pose.orientation.z = drop_pose_qz_;
-        drop_ps.pose.orientation.w = drop_pose_qw_;
-
-        RCLCPP_INFO(this->get_logger(),
-                    "Moving to post-lift drop pose in frame '%s': pos=(%.3f, %.3f, %.3f), quat=(%.3f, %.3f, %.3f, %.3f)",
-                    drop_ps.header.frame_id.c_str(),
-                    drop_ps.pose.position.x, drop_ps.pose.position.y, drop_ps.pose.position.z,
-                    drop_ps.pose.orientation.x, drop_ps.pose.orientation.y,
-                    drop_ps.pose.orientation.z, drop_ps.pose.orientation.w);
-
-        if (!moveToPose(drop_ps))
-        {
-          res->success = false;
-          return;
-        }
-      }
-
-      // 5) Drop/release the object after the optional drop-pose motion.
-      // Set reopen_after_lift:=false if you want to keep holding the object.
+      // Original code reopened the gripper after lift, which drops the object:
+      // if (!setGripper(open_gripper_joint_values_)) { ... }
+      // GEN3 default keeps the object grasped. Enable reopen_after_lift:=True only for drop tests.
       if (reopen_after_lift_)
       {
         if (!setGripperOpen())
