@@ -60,6 +60,7 @@ from flexbe_core import Logger
 from flexbe_core import OperatableStateMachine
 from flexbe_core import PriorityContainer
 from flexbe_core import initialize_flexbe_core
+from uoc_flexbe_states.manual_select_object_id_state import ManualSelectObjectIDState
 from uoc_flexbe_states.unseen_obj_seg_rgbd_service_state import UnseenObjSegRGBDServiceState
 
 # Additional imports can be added inside the following tags
@@ -143,7 +144,7 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                                   'instance_masks': 'instance_masks',
                                                   'message': 'message'})
 
-            # x:668 y:43
+            # x:697 y:42
             OperatableStateMachine.add('CgnGraspRGBD',
                                        CGNGraspRGBDServiceState(service_timeout=20.0,
                                                                 service_name='/get_grasps_rgbd'),
@@ -154,6 +155,26 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                                   'grasp_scores': 'grasp_scores',
                                                   'grasp_samples': 'grasp_samples',
                                                   'grasp_object_ids': 'grasp_object_ids'})
+
+            # x:385 y:594
+            OperatableStateMachine.add('ManualSelectObj',
+                                       ManualSelectObjectIDState(input_mode='popup',
+                                                                 background_id=0,
+                                                                 allow_background=False,
+                                                                 require_available_id=True,
+                                                                 popup_title='Select object id to grasp',
+                                                                 prompt_text='Enter the object/instance id to grasp',
+                                                                 fallback_to_terminal=True,
+                                                                 default_id=-1),
+                                       transitions={'done': 'CgnGraspRGBD', 'failed': 'failed'},
+                                       autonomy={'done': Autonomy.Off, 'failed': Autonomy.Off},
+                                       remapping={'instance_id_list': 'instance_id_list',
+                                                  'instance_ids_2d': 'instance_ids_2d',
+                                                  'seg_json': 'seg_json',
+                                                  'result_dir': 'result_dir',
+                                                  'manual_target_instance_id': 'target_instance_id',
+                                                  'target_instance_id': 'target_instance_id',
+                                                  'message': 'message'})
 
             # x:947 y:41
             OperatableStateMachine.add('MoveOMPL',
@@ -179,13 +200,14 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                        remapping={'grasp_poses': 'grasp_target_poses',
                                                   'grasp_index': 'grasp_index'})
 
-            # x:357 y:42
+            # x:296 y:39
             OperatableStateMachine.add('SelectInstanceToScene',
                                        SelectInstanceToSceneNameState(default_scene_name='scene_from_ucn',
                                                                       selection_mode='largest_or_manual',
                                                                       allow_background=False,
                                                                       manual_sentinel=-1),
-                                       transitions={'finished': 'CgnGraspRGBD', 'failed': 'failed'},
+                                       transitions={'finished': 'ManualSelectObj',
+                                                    'failed': 'failed'},
                                        autonomy={'finished': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'seg_json': 'seg_json',
                                                   'result_dir': 'result_dir',

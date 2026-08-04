@@ -7,7 +7,6 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include <cmath>
 
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit/planning_scene_interface/planning_scene_interface.hpp>
@@ -68,7 +67,7 @@ public:
     this->declare_parameter<bool>("open_before_grasp", true);
     this->declare_parameter<bool>("move_to_grasp_pose_first", false);
     this->declare_parameter<double>("pregrasp_base_z_offset", 0.0);     // Original temporary value was -0.05
-    this->declare_parameter<double>("approach_ee_z_distance", 0.10);    // Move from pregrasp to actual grasp along +Z_EE
+    this->declare_parameter<double>("approach_ee_z_distance", 0.0);     // Original temporary value was 0.12
     this->declare_parameter<double>("lift_base_z_distance", 0.10);      // Lift after closing
 
     // After lifting, optionally move to a fixed base-frame drop/place pose,
@@ -179,12 +178,6 @@ public:
                 drop_pose_x_, drop_pose_y_, drop_pose_z_,
                 drop_pose_qx_, drop_pose_qy_, drop_pose_qz_, drop_pose_qw_,
                 reopen_after_lift_ ? "true" : "false");
-
-    RCLCPP_INFO(this->get_logger(),
-                "Pregrasp approach: move_to_grasp_pose_first=%s, approach_ee_z_distance=%.3f m. "
-                "Assuming /move_to_pose first moved to actual_grasp - distance * Z_EE.",
-                move_to_grasp_pose_first_ ? "true" : "false",
-                approach_ee_z_distance_);
 
     // Original Panda hand joint-value setup:
     // open_gripper_joint_values_.assign(joint_names.size(), 0.04);
@@ -299,65 +292,46 @@ private:
         }
       }
 
-      // The request pose is the actual grasp pose.  In the updated pipeline,
-      // /move_to_pose first moves to a pregrasp pose:
-      //   pregrasp = actual_grasp - approach_ee_z_distance * Z_EE
-      // This state starts from that pregrasp pose and moves by
-      // +approach_ee_z_distance along Z_EE to reach the actual grasp pose.
-      // Use +0.10 for the normal +Z_EE approach convention. If the gripper's
-      // approach direction is opposite, use -0.10 in both services.
-      const double approach_distance = approach_ee_z_distance_;
-
-      geometry_msgs::msg::PoseStamped pregrasp_ps = grasp_ps;
-      if (std::abs(approach_distance) > 1e-6)
-      {
-        pregrasp_ps = offsetPoseAlongEndEffectorZ(grasp_ps, -approach_distance);
-      }
-
-      // Optional additional base-Z offset, preserved for compatibility.  Keep
-      // this at 0.0 for the normal UOC/GraspSAM pregrasp workflow; otherwise
-      // the final approach target will also be shifted by this base-frame amount.
-      geometry_msgs::msg::PoseStamped approach_start_ps = pregrasp_ps;
+      // Optional pregrasp base-Z offset from requested pose. Default 0.0 keeps your current
+      // working move_to_pose behavior unchanged.
+      geometry_msgs::msg::PoseStamped close_pose = grasp_ps;
       if (std::abs(pregrasp_base_z_offset_) > 1e-6)
       {
-        approach_start_ps.pose.position.z += pregrasp_base_z_offset_;
-      }
-
-      RCLCPP_INFO(this->get_logger(),
-                  "Computed pregrasp/start pose in frame '%s': pos=(%.3f, %.3f, %.3f), approach_distance=%.3f",
-                  approach_start_ps.header.frame_id.c_str(),
-                  approach_start_ps.pose.position.x,
-                  approach_start_ps.pose.position.y,
-                  approach_start_ps.pose.position.z,
-                  approach_distance);
-
-      // Optional self-contained mode: move to the pregrasp pose first.  In the
-      // normal FlexBE sequence, /move_to_pose has already done this, so keep
-      // move_to_grasp_pose_first:=false.
-      if (move_to_grasp_pose_first_)
-      {
-        if (!moveToPose(approach_start_ps))
+        // Original temporary line:
+        // if (!moveInBaseZ(grasp_ps, -0.05)) { ... }
+        geometry_msgs::msg::PoseStamped pregrasp_ps = grasp_ps;
+        pregrasp_ps.pose.position.z += pregrasp_base_z_offset_;
+        if (!moveToPose(pregrasp_ps))
         {
           res->success = false;
           return;
         }
       }
 
-      geometry_msgs::msg::PoseStamped close_pose = approach_start_ps;
-
-      // Approach from pregrasp to actual grasp along the end-effector +Z axis.
-      if (std::abs(approach_distance) > 1e-6)
+      // Move to the actual CGN grasp pose. If you already called /move_to_pose first, this
+      // is usually a near-zero/no-op motion, but it keeps /reach_to_grasp self-contained.
+      if (move_to_grasp_pose_first_)
       {
-        if (!moveAlongEndEffectorZ(close_pose, approach_distance))
+        if (!moveToPose(grasp_ps))
+        {
+          res->success = false;
+          return;
+        }
+        close_pose = grasp_ps;
+      }
+
+      // Optional approach along the end-effector Z axis. Default 0.0 because your CGN pose
+      // already works with convert/apply offsets disabled.
+      if (std::abs(approach_ee_z_distance_) > 1e-6)
+      {
+        // Original temporary line:
+        // if (!moveAlongEndEffectorZ(target_ps, 0.12)) { ... }
+        if (!moveAlongEndEffectorZ(close_pose, approach_ee_z_distance_))
         {
           res->success = false;
           return;
         }
         close_pose = target_ps;
-      }
-      else
-      {
-        close_pose = grasp_ps;
       }
 
       // 2) Close gripper on object.
@@ -745,29 +719,6 @@ private:
 
     target_ps = pose;
     return true;
-  }
-
-  geometry_msgs::msg::PoseStamped offsetPoseAlongEndEffectorZ(
-    const geometry_msgs::msg::PoseStamped& ref_pose,
-    double distance)
-  {
-    geometry_msgs::msg::PoseStamped out = ref_pose;
-
-    tf2::Quaternion q;
-    tf2::fromMsg(out.pose.orientation, q);
-    q.normalize();
-
-    tf2::Matrix3x3 R(q);
-
-    // Move along +Z_EE or -Z_EE depending on distance sign.
-    tf2::Vector3 dz_ee(0.0, 0.0, distance);
-    tf2::Vector3 dz_world = R * dz_ee;
-
-    out.pose.position.x += dz_world.x();
-    out.pose.position.y += dz_world.y();
-    out.pose.position.z += dz_world.z();
-
-    return out;
   }
 
   bool moveAlongEndEffectorZ(const geometry_msgs::msg::PoseStamped& ref_pose, double distance)
