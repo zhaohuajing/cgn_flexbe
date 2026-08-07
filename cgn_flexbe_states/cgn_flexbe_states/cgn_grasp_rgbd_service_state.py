@@ -42,7 +42,7 @@ class CGNGraspRGBDServiceState(EventState):
                  service_name: str = '/get_grasps_rgbd'):
         super().__init__(
             outcomes=['done', 'failed'],
-            input_keys=['scene_name'],
+            input_keys=['scene_name', 'target_instance_id'],
             output_keys=['grasp_target_poses', 'grasp_scores', 'grasp_samples', 'grasp_object_ids']
         )
 
@@ -106,12 +106,46 @@ class CGNGraspRGBDServiceState(EventState):
 
         try:
             grasps = self._res.grasps  # type: Grasps
-            userdata.grasp_target_poses = list(grasps.poses)
-            userdata.grasp_scores = list(grasps.scores)
-            userdata.grasp_samples = list(grasps.samples)
-            userdata.grasp_object_ids = list(grasps.object_ids)
 
-            Logger.loginfo(f"[CGNGraspRGBDServiceState] Received {len(grasps.poses)} grasp poses.")
+            poses = list(grasps.poses)
+            scores = list(grasps.scores)
+            samples = list(grasps.samples)
+            object_ids = list(grasps.object_ids)
+
+            target_id = getattr(userdata, 'target_instance_id', -1)
+            try:
+                target_id = int(target_id)
+            except Exception:
+                target_id = -1
+
+            if target_id >= 0 and object_ids:
+                keep = [i for i, oid in enumerate(object_ids) if int(oid) == target_id]
+                if keep:
+                    poses = [poses[i] for i in keep]
+                    scores = [scores[i] for i in keep]
+                    samples = [samples[i] for i in keep]
+                    object_ids = [object_ids[i] for i in keep]
+                    Logger.loginfo(
+                        f"[CGNGraspRGBDServiceState] Filtered grasps to target_instance_id={target_id}: "
+                        f"{len(keep)} poses kept."
+                    )
+                else:
+                    Logger.logwarn(
+                        f"[CGNGraspRGBDServiceState] No returned grasps had object_id={target_id}. "
+                        f"Returned object_ids={sorted(set(int(x) for x in object_ids))}. "
+                        "Keeping all returned grasps."
+                    )
+
+            userdata.grasp_target_poses = poses
+            userdata.grasp_scores = scores
+            userdata.grasp_samples = samples
+            userdata.grasp_object_ids = object_ids
+
+            Logger.loginfo(
+                f"[CGNGraspRGBDServiceState] Received {len(grasps.poses)} grasp poses; "
+                f"using {len(userdata.grasp_target_poses)} poses. "
+                f"object_ids={sorted(set(int(x) for x in userdata.grasp_object_ids)) if userdata.grasp_object_ids else []}"
+            )
         except Exception as e:
             Logger.logerr(f"[CGNGraspRGBDServiceState] Failed to copy result to userdata: {e}")
             return 'failed'

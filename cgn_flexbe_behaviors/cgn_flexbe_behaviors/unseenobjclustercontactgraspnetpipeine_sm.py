@@ -110,7 +110,8 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
         _state_machine.userdata.result_dir = ''
         _state_machine.userdata.instance_ids_2d = []
         _state_machine.userdata.instance_id_list = []
-        _state_machine.userdata.target_instance_id = 0
+        _state_machine.userdata.instance_masks = []
+        _state_machine.userdata.target_instance_id = -1
         _state_machine.userdata.scene_name = 'scene_from_ucn'
         _state_machine.userdata.message = ''
         _state_machine.userdata.grasp_target_poses = []
@@ -118,7 +119,6 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
         _state_machine.userdata.grasp_samples = []
         _state_machine.userdata.grasp_object_ids = []
         _state_machine.userdata.grasp_index = 0
-        _state_machine.userdata.manual_target_instance_id = -1
 
         # Additional creation code can be added inside the following tags
         # [MANUAL_CREATE]
@@ -133,7 +133,7 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                                                     service_timeout=5.0,
                                                                     default_im_name='from_rgbd',
                                                                     background_id=0),
-                                       transitions={'finished': 'SelectInstanceToScene',
+                                       transitions={'finished': 'ManualSelectObj',
                                                     'failed': 'failed'},
                                        autonomy={'finished': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'im_name': 'im_name',
@@ -151,12 +151,13 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                        transitions={'done': 'MoveOMPL', 'failed': 'failed'},
                                        autonomy={'done': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'scene_name': 'scene_name',
+                                                  'target_instance_id': 'target_instance_id',
                                                   'grasp_target_poses': 'grasp_target_poses',
                                                   'grasp_scores': 'grasp_scores',
                                                   'grasp_samples': 'grasp_samples',
                                                   'grasp_object_ids': 'grasp_object_ids'})
 
-            # x:385 y:594
+            # x:273 y:43
             OperatableStateMachine.add('ManualSelectObj',
                                        ManualSelectObjectIDState(input_mode='popup',
                                                                  background_id=0,
@@ -166,13 +167,13 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                                                  prompt_text='Enter the object/instance id to grasp',
                                                                  fallback_to_terminal=True,
                                                                  default_id=-1),
-                                       transitions={'done': 'CgnGraspRGBD', 'failed': 'failed'},
+                                       transitions={'done': 'SelectInstanceToScene',
+                                                    'failed': 'failed'},
                                        autonomy={'done': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'instance_id_list': 'instance_id_list',
                                                   'instance_ids_2d': 'instance_ids_2d',
                                                   'seg_json': 'seg_json',
                                                   'result_dir': 'result_dir',
-                                                  'manual_target_instance_id': 'target_instance_id',
                                                   'target_instance_id': 'target_instance_id',
                                                   'message': 'message'})
 
@@ -200,21 +201,22 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                        remapping={'grasp_poses': 'grasp_target_poses',
                                                   'grasp_index': 'grasp_index'})
 
-            # x:296 y:39
+            # x:464 y:45
             OperatableStateMachine.add('SelectInstanceToScene',
                                        SelectInstanceToSceneNameState(default_scene_name='scene_from_ucn',
-                                                                      selection_mode='largest_or_manual',
+                                                                      selection_mode='manual',
                                                                       allow_background=False,
-                                                                      manual_sentinel=-1),
-                                       transitions={'finished': 'ManualSelectObj',
-                                                    'failed': 'failed'},
+                                                                      manual_sentinel=-1,
+                                                                      converter_script='/home/csrobot/graspnet_ws/src/contact_graspnet_ros2/contact_graspnet/ucn_to_cgn_scene.py',
+                                                                      cgn_test_data_dir='/home/csrobot/graspnet_ws/src/contact_graspnet_ros2/contact_graspnet/test_data',
+                                                                      filter_scene_to_selected=True),
+                                       transitions={'finished': 'CgnGraspRGBD', 'failed': 'failed'},
                                        autonomy={'finished': Autonomy.Off, 'failed': Autonomy.Off},
                                        remapping={'seg_json': 'seg_json',
                                                   'result_dir': 'result_dir',
                                                   'instance_ids_2d': 'instance_ids_2d',
                                                   'instance_id_list': 'instance_id_list',
                                                   'im_name': 'im_name',
-                                                  'manual_target_instance_id': 'manual_target_instance_id',
                                                   'target_instance_id': 'target_instance_id',
                                                   'scene_name': 'scene_name',
                                                   'message': 'message'})
