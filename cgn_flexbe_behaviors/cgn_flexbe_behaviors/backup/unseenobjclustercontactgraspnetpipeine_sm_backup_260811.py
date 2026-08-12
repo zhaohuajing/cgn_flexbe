@@ -208,7 +208,7 @@ class UnseenObjClusterContactGraspnetPipeineSM(Behavior):
                                                                       allow_background=False,
                                                                       manual_sentinel=-1,
                                                                       converter_script='/home/csrobot/graspnet_ws/src/contact_graspnet_ros2/contact_graspnet/ucn_to_cgn_scene.py',
-                                                                      cgn_test_data_dir='/home/csrobot/graspnet_ws/src/contact_graspnet_ros2/contact_graspnet/results',
+                                                                      cgn_test_data_dir='/home/csrobot/graspnet_ws/src/contact_graspnet_ros2/contact_graspnet/test_data',
                                                                       filter_scene_to_selected=True),
                                        transitions={'finished': 'CgnGraspRGBD', 'failed': 'failed'},
                                        autonomy={'finished': Autonomy.Off, 'failed': Autonomy.Off},

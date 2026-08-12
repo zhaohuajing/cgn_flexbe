@@ -27,7 +27,11 @@ class SelectInstanceToSceneNameState(EventState):
                  manual_sentinel: int = -1,
                  converter_script: str = '/home/csrobot/graspnet_ws/src/contact_graspnet_ros2/contact_graspnet/ucn_to_cgn_scene.py',
                  cgn_test_data_dir: str = '/home/csrobot/graspnet_ws/src/contact_graspnet_ros2/contact_graspnet/results',
-                 filter_scene_to_selected: bool = True):
+                 filter_scene_to_selected: bool = True,
+                 cgn_fx: float = 648.83642578125,
+                 cgn_fy: float = 649.315673828125,
+                 cgn_cx: float = 310.4570007324219,
+                 cgn_cy: float = 119.1401596069336):
         super().__init__(
             outcomes=['finished', 'failed'],
             input_keys=[
@@ -47,6 +51,10 @@ class SelectInstanceToSceneNameState(EventState):
         self._converter_script = os.path.expanduser(str(converter_script))
         self._cgn_test_data_dir = os.path.expanduser(str(cgn_test_data_dir))
         self._filter_scene_to_selected = bool(filter_scene_to_selected)
+        self._cgn_fx = float(cgn_fx)
+        self._cgn_fy = float(cgn_fy)
+        self._cgn_cx = float(cgn_cx)
+        self._cgn_cy = float(cgn_cy)
 
         self._had_error = False
         self._target_id = None
@@ -86,15 +94,25 @@ class SelectInstanceToSceneNameState(EventState):
         if not os.path.exists(self._converter_script):
             raise RuntimeError(f"CGN scene converter not found: {self._converter_script}")
 
-        # Keep this no-argument call compatible with your existing script.
-        # The selected object filtering is applied to the generated .npy below.
-        cmd = ["python3", self._converter_script]
+        # Explicitly pass the Kinova/UOC 640x360 intrinsics and output path.
+        # This avoids silently using the old Gazebo/sim defaults in ucn_to_cgn_scene.py.
+        out_scene = os.path.join(self._cgn_test_data_dir, f"{self._default_scene_name}.npy")
+        os.makedirs(self._cgn_test_data_dir, exist_ok=True)
+
+        cmd = [
+            "python3", self._converter_script,
+            "--fx", str(self._cgn_fx),
+            "--fy", str(self._cgn_fy),
+            "--cx", str(self._cgn_cx),
+            "--cy", str(self._cgn_cy),
+            "--out_scene", out_scene,
+        ]
         env = os.environ.copy()
         env["PYTHONNOUSERSITE"] = "1"
         env.setdefault("MPLBACKEND", "Agg")
 
         Logger.loginfo(
-            "[SelectInstanceToSceneNameState] Running UOC->CGN scene converter:\n"
+            "[SelectInstanceToSceneNameState] Running UOC->CGN scene converter with explicit Kinova intrinsics:\n"
             f"  {' '.join(cmd)}"
         )
         subprocess.check_call(cmd, env=env)
@@ -143,7 +161,7 @@ class SelectInstanceToSceneNameState(EventState):
         scene[seg_key] = filtered.astype(seg.dtype, copy=False)
 
         np.save(scene_path, scene)
-        unique_after = np.unique(scene[seg_key])
+        unique_after = np.unique(np.max(scene[seg_key]))
         Logger.loginfo(
             f"[SelectInstanceToSceneNameState] Filtered {scene_path} to selected object id {target_id}. "
             f"selected_area={selected_area}, unique ids before={unique_before.tolist()}, "

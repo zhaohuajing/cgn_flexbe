@@ -18,12 +18,12 @@ class CGNGraspRGBDServiceState(EventState):
     scene name (RGBD pipeline).
 
     Assumes the server:
-      - Expects `scene_name` to select test_data/<scene_name>.npy
+      - Expects `scene_name` to select results/<scene_name>.npy
       - Ignores `points` and `mask` fields (or they can be left empty)
 
     This matches your `grasp_executor_rgbd_server.py`, which uses:
         self.scene_name = request.scene_name
-        np_path = f"test_data/{scene_name}.npy"
+        np_path = f"results/{scene_name}.npy"
     and loads 'results/predictions_<scene_name>.npz'. :contentReference[oaicite:1]{index=1}
 
     ># scene_name              string                 CGN scene name (without .npy)

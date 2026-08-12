@@ -68,14 +68,14 @@ public:
     this->declare_parameter<bool>("open_before_grasp", true);
     this->declare_parameter<bool>("move_to_grasp_pose_first", false);
     this->declare_parameter<double>("pregrasp_base_z_offset", 0.0);     // Original temporary value was -0.05
-    this->declare_parameter<double>("approach_ee_z_distance", 0.10);    // Move from pregrasp to actual grasp along +Z_EE
+    this->declare_parameter<double>("approach_ee_z_distance", 0.14);    // Move from pregrasp to actual grasp along +Z_EE
     this->declare_parameter<double>("lift_base_z_distance", 0.10);      // Lift after closing
 
     // After lifting, optionally move to a fixed base-frame drop/place pose,
     // then open the gripper.  This keeps the earlier lift behavior but makes
     // the actual release happen at a safer, known pose.
     this->declare_parameter<bool>("move_to_drop_pose_after_lift", true);
-    this->declare_parameter<double>("drop_pose_x", 0.12054);
+    this->declare_parameter<double>("drop_pose_x", 0.10054);
     this->declare_parameter<double>("drop_pose_y", -0.23436);
     this->declare_parameter<double>("drop_pose_z", 0.39196);
     this->declare_parameter<double>("drop_pose_qx", 0.706244);
@@ -86,8 +86,8 @@ public:
 
     this->declare_parameter<double>("arm_planning_time", 5.0);
     this->declare_parameter<double>("gripper_planning_time", 5.0);
-    this->declare_parameter<double>("arm_velocity_scaling", 0.2);
-    this->declare_parameter<double>("arm_acceleration_scaling", 0.2);
+    this->declare_parameter<double>("arm_velocity_scaling", 0.1);
+    this->declare_parameter<double>("arm_acceleration_scaling", 0.1);
     this->declare_parameter<double>("gripper_velocity_scaling", 0.5);
     this->declare_parameter<double>("gripper_acceleration_scaling", 0.5);
 
