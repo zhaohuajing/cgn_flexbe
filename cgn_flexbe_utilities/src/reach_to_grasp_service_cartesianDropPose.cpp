@@ -75,17 +75,6 @@ public:
     // then open the gripper.  This keeps the earlier lift behavior but makes
     // the actual release happen at a safer, known pose.
     this->declare_parameter<bool>("move_to_drop_pose_after_lift", true);
-    // Prefer SRDF/manipulator named state for the drop pose instead of a Cartesian pose.
-    // Your Kinova SRDF defines this as group_state name="DropToBox" group="manipulator".
-    this->declare_parameter<bool>("use_drop_named_target", true);
-    this->declare_parameter<std::string>("drop_named_target", "DropToBox");
-
-    // After releasing the object, optionally return to another SRDF/manipulator named state.
-    // Your Kinova SRDF defines this as group_state name="CameraTopDown" group="manipulator".
-    this->declare_parameter<bool>("return_to_named_target_after_drop", true);
-    this->declare_parameter<std::string>("return_named_target", "CameraTopDown");
-
-    // Cartesian drop pose kept only as fallback when use_drop_named_target:=false.
     this->declare_parameter<double>("drop_pose_x", 0.10054);
     this->declare_parameter<double>("drop_pose_y", -0.23436);
     this->declare_parameter<double>("drop_pose_z", 0.39196);
@@ -124,10 +113,6 @@ public:
     this->get_parameter("approach_ee_z_distance", approach_ee_z_distance_);
     this->get_parameter("lift_base_z_distance", lift_base_z_distance_);
     this->get_parameter("move_to_drop_pose_after_lift", move_to_drop_pose_after_lift_);
-    this->get_parameter("use_drop_named_target", use_drop_named_target_);
-    this->get_parameter("drop_named_target", drop_named_target_);
-    this->get_parameter("return_to_named_target_after_drop", return_to_named_target_after_drop_);
-    this->get_parameter("return_named_target", return_named_target_);
     this->get_parameter("drop_pose_x", drop_pose_x_);
     this->get_parameter("drop_pose_y", drop_pose_y_);
     this->get_parameter("drop_pose_z", drop_pose_z_);
@@ -188,21 +173,12 @@ public:
     RCLCPP_INFO(this->get_logger(), "MoveIt planning frame: %s", arm_group_->getPlanningFrame().c_str());
     RCLCPP_INFO(this->get_logger(), "MoveIt end-effector link: %s", arm_group_->getEndEffectorLink().c_str());
     RCLCPP_INFO(this->get_logger(),
-                "Post-lift drop: enabled=%s, use_named_target=%s, drop_named_target='%s', "
-                "cartesian_fallback_frame=%s, cartesian_fallback_pos=(%.3f, %.3f, %.3f), "
-                "cartesian_fallback_quat=(%.3f, %.3f, %.3f, %.3f), reopen_after_lift=%s",
+                "Post-lift drop pose: enabled=%s, frame=%s, pos=(%.3f, %.3f, %.3f), quat=(%.3f, %.3f, %.3f, %.3f), reopen_after_lift=%s",
                 move_to_drop_pose_after_lift_ ? "true" : "false",
-                use_drop_named_target_ ? "true" : "false",
-                drop_named_target_.c_str(),
                 base_frame_.c_str(),
                 drop_pose_x_, drop_pose_y_, drop_pose_z_,
                 drop_pose_qx_, drop_pose_qy_, drop_pose_qz_, drop_pose_qw_,
                 reopen_after_lift_ ? "true" : "false");
-
-    RCLCPP_INFO(this->get_logger(),
-                "Post-drop return: enabled=%s, return_named_target='%s'",
-                return_to_named_target_after_drop_ ? "true" : "false",
-                return_named_target_.c_str());
 
     RCLCPP_INFO(this->get_logger(),
                 "Pregrasp approach: move_to_grasp_pose_first=%s, approach_ee_z_distance=%.3f m. "
@@ -273,11 +249,6 @@ private:
   double approach_ee_z_distance_ = 0.10;
   double lift_base_z_distance_ = 0.15;
   bool move_to_drop_pose_after_lift_ = true;
-  bool use_drop_named_target_ = true;
-  std::string drop_named_target_ = "DropToBox";
-  bool return_to_named_target_after_drop_ = true;
-  std::string return_named_target_ = "CameraTopDown";
-
   double drop_pose_x_ = 0.12054;
   double drop_pose_y_ = -0.23436;
   double drop_pose_z_ = 0.39196;
@@ -406,45 +377,32 @@ private:
         }
       }
 
-      // 4) Move to the drop/place pose before releasing.
-      // Preferred GEN3 behavior: use an SRDF named joint state (DropToBox).
-      // The old Cartesian drop pose is preserved only as a fallback when
-      // use_drop_named_target:=false.
+      // 4) Move to a fixed base-frame drop/place pose before releasing.
+      // This pose is independent of the grasp orientation and is specified in base_frame_.
       if (move_to_drop_pose_after_lift_)
       {
-        if (use_drop_named_target_)
-        {
-          if (!moveArmToNamedTarget(drop_named_target_, "moveToDropNamedTarget"))
-          {
-            res->success = false;
-            return;
-          }
-        }
-        else
-        {
-          geometry_msgs::msg::PoseStamped drop_ps;
-          drop_ps.header.frame_id = base_frame_;
-          drop_ps.header.stamp = this->now();
-          drop_ps.pose.position.x = drop_pose_x_;
-          drop_ps.pose.position.y = drop_pose_y_;
-          drop_ps.pose.position.z = drop_pose_z_;
-          drop_ps.pose.orientation.x = drop_pose_qx_;
-          drop_ps.pose.orientation.y = drop_pose_qy_;
-          drop_ps.pose.orientation.z = drop_pose_qz_;
-          drop_ps.pose.orientation.w = drop_pose_qw_;
+        geometry_msgs::msg::PoseStamped drop_ps;
+        drop_ps.header.frame_id = base_frame_;
+        drop_ps.header.stamp = this->now();
+        drop_ps.pose.position.x = drop_pose_x_;
+        drop_ps.pose.position.y = drop_pose_y_;
+        drop_ps.pose.position.z = drop_pose_z_;
+        drop_ps.pose.orientation.x = drop_pose_qx_;
+        drop_ps.pose.orientation.y = drop_pose_qy_;
+        drop_ps.pose.orientation.z = drop_pose_qz_;
+        drop_ps.pose.orientation.w = drop_pose_qw_;
 
-          RCLCPP_INFO(this->get_logger(),
-                      "Moving to post-lift Cartesian drop pose in frame '%s': pos=(%.3f, %.3f, %.3f), quat=(%.3f, %.3f, %.3f, %.3f)",
-                      drop_ps.header.frame_id.c_str(),
-                      drop_ps.pose.position.x, drop_ps.pose.position.y, drop_ps.pose.position.z,
-                      drop_ps.pose.orientation.x, drop_ps.pose.orientation.y,
-                      drop_ps.pose.orientation.z, drop_ps.pose.orientation.w);
+        RCLCPP_INFO(this->get_logger(),
+                    "Moving to post-lift drop pose in frame '%s': pos=(%.3f, %.3f, %.3f), quat=(%.3f, %.3f, %.3f, %.3f)",
+                    drop_ps.header.frame_id.c_str(),
+                    drop_ps.pose.position.x, drop_ps.pose.position.y, drop_ps.pose.position.z,
+                    drop_ps.pose.orientation.x, drop_ps.pose.orientation.y,
+                    drop_ps.pose.orientation.z, drop_ps.pose.orientation.w);
 
-          if (!moveToPose(drop_ps))
-          {
-            res->success = false;
-            return;
-          }
+        if (!moveToPose(drop_ps))
+        {
+          res->success = false;
+          return;
         }
       }
 
@@ -453,22 +411,6 @@ private:
       if (reopen_after_lift_)
       {
         if (!setGripperOpen())
-        {
-          res->success = false;
-          return;
-        }
-      }
-
-      // 6) After releasing, optionally return to a named observation/home pose.
-      // Default GEN3 behavior: CameraTopDown.
-      if (return_to_named_target_after_drop_)
-      {
-        if (return_named_target_.empty())
-        {
-          RCLCPP_WARN(this->get_logger(),
-                      "return_to_named_target_after_drop is true but return_named_target is empty; skipping return motion.");
-        }
-        else if (!moveArmToNamedTarget(return_named_target_, "returnToNamedTarget"))
         {
           res->success = false;
           return;
@@ -802,56 +744,6 @@ private:
     }
 
     target_ps = pose;
-    return true;
-  }
-
-  bool moveArmToNamedTarget(const std::string& named_target, const std::string& label)
-  {
-    if (named_target.empty())
-    {
-      RCLCPP_ERROR(this->get_logger(), "%s: named target is empty.", label.c_str());
-      return false;
-    }
-
-    // Use the real current state as the start state. This mirrors moveToPose()
-    // and avoids planning from a default state on Kortex/joint_states timing edge cases.
-    arm_group_->setStartStateToCurrentState();
-
-    arm_group_->setPlanningTime(arm_planning_time_);
-    arm_group_->setMaxVelocityScalingFactor(arm_velocity_scaling_);
-    arm_group_->setMaxAccelerationScalingFactor(arm_acceleration_scaling_);
-    arm_group_->clearPoseTargets();
-
-    RCLCPP_INFO(this->get_logger(), "%s: planning to arm named target '%s'.",
-                label.c_str(), named_target.c_str());
-
-    if (!arm_group_->setNamedTarget(named_target))
-    {
-      RCLCPP_ERROR(this->get_logger(), "%s: failed to set arm named target '%s'. "
-                   "Check that this group_state exists for the loaded arm planning group in the SRDF.",
-                   label.c_str(), named_target.c_str());
-      return false;
-    }
-
-    moveit::planning_interface::MoveGroupInterface::Plan plan;
-    auto result = arm_group_->plan(plan);
-    if (result != moveit::core::MoveItErrorCode::SUCCESS)
-    {
-      RCLCPP_WARN(this->get_logger(), "%s: planning failed for arm named target '%s'.",
-                  label.c_str(), named_target.c_str());
-      return false;
-    }
-
-    auto exec = arm_group_->execute(plan);
-    if (exec != moveit::core::MoveItErrorCode::SUCCESS)
-    {
-      RCLCPP_ERROR(this->get_logger(), "%s: execution failed for arm named target '%s' with code %d.",
-                   label.c_str(), named_target.c_str(), static_cast<int>(exec.val));
-      return false;
-    }
-
-    RCLCPP_INFO(this->get_logger(), "%s: reached arm named target '%s'.",
-                label.c_str(), named_target.c_str());
     return true;
   }
 
